@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calculadora de Planos e Serviços (via CSV)</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f6f9; margin: 0; padding: 20px; }
+    h1 { text-align: center; color: #1e3a8a; }
+    .card { background: white; border-radius: 12px; padding: 20px; margin: 15px 0; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+    .card h2 { margin-top: 0; border-bottom: 2px solid #1e3a8a; padding-bottom: 5px; color: #1e3a8a; }
+    .item { border: 1px solid #ddd; border-radius: 10px; padding: 10px; margin: 10px 0; cursor: pointer; transition: 0.2s; }
+    .item:hover { background: #f0f4ff; }
+    .selected { border-color: #2563eb; background: #e0ecff; }
+    .loading { color: #666; font-style: italic; }
+    .error { color: #b91c1c; background: #fee2e2; padding: 8px; border-radius: 6px; }
+    ul { list-style: none; padding-left: 0; }
+  </style>
+</head>
+<body>
+  <h1>Calculadora de Planos e Serviços (via CSV)</h1>
+
+  <div class="card">
+    <p>Dados carregados via CSV público da planilha.</p>
+    <button onclick="carregarCSV()">🔄 Atualizar Agora</button>
+    <p id="last-update"></p>
+  </div>
+
+  <div class="card">
+    <h2>Planos de Internet</h2>
+    <div id="planos-container"><div class="loading">Carregando planos...</div></div>
+  </div>
+
+  <div class="card">
+    <h2>Serviços Digitais</h2>
+    <div id="servicos-container"><div class="loading">Carregando serviços...</div></div>
+  </div>
+
+  <div class="card">
+    <h2>Resumo do Pedido</h2>
+    <div id="resumo">Nenhum plano ou serviço selecionado.</div>
+  </div>
+
+  <script>
+    const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQiJKegPY4bCrxIoKZ474PblFGF8mPHQWBNldXFobO36GitnPw3wuyDT_65YYp2HwBCFZ2FnViKtYwo/pub?gid=0&single=true&output=csv";
+    let planos = [], servicos = [], planoSelecionado = null, servicosSelecionados = [];
+
+    function formatarMoeda(valor) {
+      return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function extrairValor(texto) {
+      if (!texto) return null;
+      const t = texto.toString().trim();
+      if (t.toLowerCase().includes("s/cartão")) return null;
+      const limpo = t.replace("R$", "").replace(/\s/g, "").replace(",", ".");
+      const num = parseFloat(limpo);
+      return isNaN(num) ? null : num;
+    }
+
+    async function carregarCSV() {
+      try {
+        document.getElementById("planos-container").innerHTML = '<div class="loading">Carregando planos...</div>';
+        document.getElementById("servicos-container").innerHTML = '<div class="loading">Carregando serviços...</div>';
+
+        const resp = await fetch(CSV_URL);
+        if (!resp.ok) throw new Error("Falha ao buscar CSV: " + resp.statusText);
+        const text = await resp.text();
+        const linhas = text.trim().split("\n").map(l => l.split(","));
+        // Exemplo de estrutura de linhas:
+        // linhas[0] -> cabeçalho: ["Planos de internet","Venda c/ Cartão","Venda c/ Boleto"]
+        // A partir da linha onde nome da coluna é "Serviços Digitais", tudo abaixo são serviços.
+
+        planos = [];
+        servicos = [];
+        let secao = "planos";
+
+        for (let i = 1; i < linhas.length; i++) {
+          const cols = linhas[i];
+          if (!cols[0]) continue;
+          const nome = cols[0].trim();
+
+          if (nome.toLowerCase().includes("serviços digitais")) {
+            secao = "servicos";
+            continue;
+          }
+          // Ignorar se for cabeçalho repetido ou vazio
+          if (nome.toLowerCase().includes("planos de internet")) continue;
+
+          const cartao = extrairValor(cols[1]);
+          const boleto = extrairValor(cols[2]);
+          if ((cartao === null || cartao === 0) && (boleto === null || boleto === 0)) continue;
+
+          const item = { nome, cartao, boleto };
+          if (secao === "planos") planos.push(item);
+          else servicos.push(item);
+        }
+
+        renderizarPlanos();
+        renderizarServicos();
+        document.getElementById("last-update").textContent = "Última atualização: " + new Date().toLocaleString('pt-BR');
+      } catch (err) {
+        console.error(err);
+        document.getElementById("planos-container").innerHTML = '<div class="error">Erro ao carregar planos.</div>';
+        document.getElementById("servicos-container").innerHTML = '<div class="error">Erro ao carregar serviços.</div>';
+      }
+    }
+
+    function renderizarPlanos() {
+      const cont = document.getElementById("planos-container");
+      if (planos.length === 0) {
+        cont.innerHTML = '<div class="error">Nenhum plano encontrado.</div>';
+        return;
+      }
+      cont.innerHTML = "";
+      planos.forEach((p, i) => {
+        const div = document.createElement("div");
+        div.className = "item" + (planoSelecionado === i ? " selected" : "");
+        div.innerHTML = `<strong>${p.nome}</strong><br>
+          Cartão: ${p.cartao ? formatarMoeda(p.cartao) : "s/cartão"} |
+          Boleto: ${p.boleto ? formatarMoeda(p.boleto) : "s/boleto"}`;
+        div.addEventListener("click", () => {
+          planoSelecionado = i;
+          atualizarResumo();
+          renderizarPlanos();
+        });
+        cont.appendChild(div);
+      });
+    }
+
+    function renderizarServicos() {
+      const cont = document.getElementById("servicos-container");
+      if (servicos.length === 0) {
+        cont.innerHTML = '<div class="error">Nenhum serviço encontrado.</div>';
+        return;
+      }
+      cont.innerHTML = "";
+      servicos.forEach((s, i) => {
+        const div = document.createElement("div");
+        div.className = "item" + (servicosSelecionados.includes(i) ? " selected" : "");
+        div.innerHTML = `<strong>${s.nome}</strong><br>
+          Cartão: ${s.cartao ? formatarMoeda(s.cartao) : "s/cartão"} |
+          Boleto: ${s.boleto ? formatarMoeda(s.boleto) : "s/boleto"}`;
+        div.addEventListener("click", () => {
+          const pos = servicosSelecionados.indexOf(i);
+          if (pos >= 0) servicosSelecionados.splice(pos,1);
+          else servicosSelecionados.push(i);
+          renderizarServicos();
+          atualizarResumo();
+        });
+        cont.appendChild(div);
+      });
+    }
+
+    function atualizarResumo() {
+      const res = document.getElementById("resumo");
+      if (planoSelecionado === null && servicosSelecionados.length === 0) {
+        res.innerHTML = "Nenhum plano ou serviço selecionado.";
+        return;
+      }
+      let totalCartao = 0, totalBoleto = 0;
+      let html = "<ul>";
+
+      if (planoSelecionado !== null) {
+        const p = planos[planoSelecionado];
+        totalCartao += p.cartao || 0;
+        totalBoleto += p.boleto || 0;
+        html += `<li><strong>Plano:</strong> ${p.nome} — Cartão: ${p.cartao ? formatarMoeda(p.cartao) : "s/cartão"} | Boleto: ${p.boleto ? formatarMoeda(p.boleto) : "s/boleto"}</li>`;
+      }
+
+      servicosSelecionados.forEach(idx => {
+        const s = servicos[idx];
+        totalCartao += s.cartao || 0;
+        totalBoleto += s.boleto || 0;
+        html += `<li><strong>Serviço:</strong> ${s.nome} — Cartão: ${s.cartao ? formatarMoeda(s.cartao) : "s/cartão"} | Boleto: ${s.boleto ? formatarMoeda(s.boleto) : "s/boleto"}</li>`;
+      });
+
+      html += "</ul><hr>";
+      html += `<p><strong>Total Cartão:</strong> ${formatarMoeda(totalCartao)}</p>`;
+      html += `<p><strong>Total Boleto:</strong> ${formatarMoeda(totalBoleto)}</p>`;
+
+      res.innerHTML = html;
+    }
+
+    // iniciar
+    carregarCSV();
+  </script>
+</body>
+</html>
