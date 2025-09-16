@@ -4,7 +4,6 @@
 <meta charset="utf-8" />
 <title>Planos e Serviços - Cálculo</title>
 <style>
-  /* Fundo com gradiente azul escuro */
   body {
     font-family: "Segoe UI", Roboto, Arial, sans-serif;
     margin: 0;
@@ -14,7 +13,6 @@
     min-height: 100vh;
   }
 
-  /* Efeito Glass */
   .box {
     background: rgba(255, 255, 255, 0.12);
     border-radius: 16px;
@@ -62,11 +60,6 @@
     border-radius: 12px;
   }
 
-  .item strong {
-    font-weight: 600;
-    color: #fff;
-  }
-
   .precos {
     font-size: 15px;
     color: #dbeafe;
@@ -104,11 +97,26 @@
     background: rgba(255, 0, 0, 0.15);
   }
 
-  label {
+  select {
+    width: 100%;
+    padding: 12px;
+    border-radius: 12px;
+    border: none;
+    font-size: 16px;
+    font-weight: 600;
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     cursor: pointer;
   }
 
-  input[type="radio"],
+  select option {
+    background: #1b263b;
+    color: #fff;
+    font-weight: 500;
+  }
+
   input[type="checkbox"] {
     accent-color: #38bdf8;
     transform: scale(1.2);
@@ -175,9 +183,9 @@ function atualizarTotal() {
   let totalCartao = 0;
   let totalBoleto = 0;
 
-  const planoSelecionado = document.querySelector("input[name='plano']:checked");
-  if (planoSelecionado) {
-    const idx = planoSelecionado.value;
+  const planoSelecionado = document.getElementById("planoSelect").value;
+  if (planoSelecionado !== "") {
+    const idx = parseInt(planoSelecionado);
     totalCartao += dadosPlanos[idx].cartao || 0;
     totalBoleto += dadosPlanos[idx].boleto || 0;
   }
@@ -217,15 +225,12 @@ async function carregarCSV() {
     })).filter(x => x.nome);
 
     let html = "<h2>Planos de Internet</h2>";
+    html += `<select id="planoSelect" onchange="atualizarTotal()">
+              <option value="">-- Selecione um plano --</option>`;
     dadosPlanos.forEach((p, i) => {
-      html += `<div class="item">
-        <label>
-          <input type="radio" name="plano" value="${i}" onchange="atualizarTotal()"> 
-          <strong>${p.nome}</strong>
-        </label>
-        <div class="precos">💳 ${formatarMoeda(p.cartao)} | 📄 ${formatarMoeda(p.boleto)}</div>
-      </div>`;
+      html += `<option value="${i}">${p.nome} | 💳 ${formatarMoeda(p.cartao)} | 📄 ${formatarMoeda(p.boleto)}</option>`;
     });
+    html += `</select>`;
 
     html += "<h2>Serviços Digitais</h2>";
     dadosServicos.forEach((s, i) => {
