@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Planos - Ubá</title>
+  <title>Planos e Serviços</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -20,30 +20,37 @@
       margin: 0;
       font-size: 22px;
     }
-    #planos-container {
-      max-width: 600px;
+    h2 {
+      margin-top: 25px;
+      color: #0077cc;
+      font-size: 20px;
+      border-bottom: 2px solid #0077cc;
+      padding-bottom: 5px;
+    }
+    #container {
+      max-width: 700px;
       margin: 30px auto;
       background: #fff;
       padding: 20px;
       border-radius: 12px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.15);
     }
-    .plano-item {
+    .item {
       padding: 12px;
       border-bottom: 1px solid #eee;
     }
-    .plano-item:last-child {
+    .item:last-child {
       border-bottom: none;
     }
-    .plano-item strong {
-      color: #0077cc;
+    .item strong {
       display: block;
       margin-bottom: 5px;
       font-size: 16px;
-    }
-    .plano-preco {
-      font-size: 14px;
       color: #333;
+    }
+    .preco {
+      font-size: 14px;
+      color: #444;
     }
     .error {
       color: red;
@@ -56,11 +63,11 @@
 <body onload="carregarCSV()">
 
   <header>
-    <h1>Planos de Internet - Ubá</h1>
+    <h1>Planos e Serviços Digitais</h1>
   </header>
 
-  <div id="planos-container">
-    Carregando planos...
+  <div id="container">
+    Carregando informações...
   </div>
 
   <script>
@@ -73,32 +80,50 @@
         // Quebra em linhas e colunas
         const linhas = data.split("\n").map(l => l.split(","));
 
-        // Pega somente as linhas 3 até 13 (ignora cabeçalhos)
-        const planos = linhas.slice(2, 13);
-
         let html = "";
-        planos.forEach(linha => {
-          const nome = linha[0];   // Coluna A
-          const cartao = linha[1]; // Coluna B
-          const boleto = linha[2]; // Coluna C
 
-          if (!nome || (!cartao && !boleto)) return;
+        // --------- Planos de Internet (A3:C13) ---------
+        html += "<h2>Planos de Internet</h2>";
+        const planos = linhas.slice(2, 13); // A3:C13
+        planos.forEach(linha => {
+          const nome = linha[0];
+          const cartao = linha[1];
+          const boleto = linha[2];
+          if (!nome) return;
 
           html += `
-            <div class="plano-item">
+            <div class="item">
               <strong>${nome}</strong>
-              <div class="plano-preco">💳 Cartão: ${cartao}</div>
-              <div class="plano-preco">📄 Boleto: ${boleto}</div>
+              <div class="preco">💳 Venda c/ Cartão: ${cartao}</div>
+              <div class="preco">📄 Venda c/ Boleto: ${boleto}</div>
             </div>
           `;
         });
 
-        document.getElementById("planos-container").innerHTML = html;
+        // --------- Serviços Digitais (A17:C29) ---------
+        html += "<h2>Serviços Digitais</h2>";
+        const servicos = linhas.slice(16, 29); // A17:C29
+        servicos.forEach(linha => {
+          const nome = linha[0];
+          const cartao = linha[1];
+          const boleto = linha[2];
+          if (!nome) return;
+
+          html += `
+            <div class="item">
+              <strong>${nome}</strong>
+              <div class="preco">💳 Venda c/ Cartão: ${cartao}</div>
+              <div class="preco">📄 Venda c/ Boleto: ${boleto}</div>
+            </div>
+          `;
+        });
+
+        document.getElementById("container").innerHTML = html;
 
       } catch (err) {
         console.error("Erro ao carregar CSV:", err);
-        document.getElementById("planos-container").innerHTML =
-          '<div class="error">❌ Erro ao carregar planos.</div>';
+        document.getElementById("container").innerHTML =
+          '<div class="error">❌ Erro ao carregar informações.</div>';
       }
     }
   </script>
